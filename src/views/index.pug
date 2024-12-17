@@ -1,0 +1,16 @@
+doctype html
+html
+  head
+    title= title
+  body
+    h1= title
+    p= description
+
+    h2 Endpoints
+    ul
+      each endpoint in apiInfo.endpoints
+        li
+          strong= endpoint.method
+          |  #{endpoint.path} - #{endpoint.description}
+
+    img(src='media/hardware.png', alt='Example Image')

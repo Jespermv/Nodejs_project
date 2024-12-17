@@ -1,75 +1,168 @@
-import http from 'http';
-import {parse} from 'url';
-const hostname = '127.0.0.1';
+import express from 'express';
+import path from 'path';
+import {fileURLToPath} from 'url';
+
+const app = express();
 const port = 3000;
 
-let posts = [
-  {id: 1, title: 'Hello World'},
-  {id: 2, title: 'Hello Again World'},
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use('/media', express.static(path.join(__dirname, 'media')));
+
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views'));
+
+let mediaItems = [
+  {
+    media_id: 9632,
+    filename: 'ffd8.jpg',
+    filesize: 887574,
+    title: 'Favorite drink',
+    description: '',
+    user_id: 1606,
+    media_type: 'image/jpeg',
+    created_at: '2023-10-16T19:00:09.000Z',
+  },
+  {
+    media_id: 9590,
+    filename: '60ac.jpg',
+    filesize: 23829,
+    title: 'Basement',
+    description: 'Light setup in basement',
+    user_id: 305,
+    media_type: 'image/jpeg',
+    created_at: '2023-10-12T06:56:41.000Z',
+  },
 ];
 
-const server = http.createServer((req, res) => {
-  const parsedUrl = parse(req.url, true);
-  const {pathname} = parsedUrl;
+let users = [
+  {
+    user_id: 305,
+    username: 'Donatello',
+    password: '********',
+    email: 'dona@example.com',
+    user_level_id: 1,
+    created_at: '2021-12-11T06:00:41.000Z',
+  },
+];
 
-  // Handle request methods and paths
-  if (req.method == 'GET' && pathname === '/posts') {
-    // Read data from server
-    res.writeHead(200, {'Content-Type': 'application/json'});
-    res.end(JSON.stringify(posts));
-  } else if (req.method === 'POST' && pathname === '/posts') {
-    // Send data to server
-    let body = '';
-    req.on('data', (chunk) => {
-      body += chunk.toString(); // Convert Buffer to string
-    });
-    req.on('end', () => {
-      const newPost = JSON.parse(body);
-      newPost.id = posts.length + 1; // Assign a new ID
-      posts.push(newPost);
-      res.writeHead(201, {'Content-Type': 'application/json'});
-      res.end(JSON.stringify(newPost));
-    });
-  } else if (req.method === 'DELETE' && pathname.startsWith('/posts/')) {
-    // Delete data
-    const id = parseInt(pathname.split('/')[2]);
-    const index = posts.findIndex((post) => post.id === id);
-    if (index !== -1) {
-      posts.splice(index, 1); // Remove the post
-      res.writeHead(204); // No content
-      res.end();
-    } else {
-      // Test error response for deleting a non-existing resource
-      res.writeHead(404, {'Content-Type': 'application/json'});
-      res.end(JSON.stringify({error: 'Post not found'}));
-    }
-  } else if (req.method === 'PUT' && pathname.startsWith('/posts/')) {
-    // Modify something
-    const id = parseInt(pathname.split('/')[2]);
-    const index = posts.findIndex((post) => post.id === id);
-    if (index !== -1) {
-      let body = '';
-      req.on('data', (chunk) => {
-        body += chunk.toString();
-      });
-      req.on('end', () => {
-        const updatedPost = JSON.parse(body);
-        posts[index] = {id, ...updatedPost}; // Update the post
-        res.writeHead(200, {'Content-Type': 'application/json'});
-        res.end(JSON.stringify(posts[index]));
-      });
-    } else {
-      // Test error response for modifying a non-existing resource
-      res.writeHead(404, {'Content-Type': 'application/json'});
-      res.end(JSON.stringify({error: 'Post not found'}));
-    }
-  } else {
-    // Send 404 response for non-existing resources
-    res.writeHead(404, {'Content-Type': 'application/json'});
-    res.end(JSON.stringify({error: 'Resource not found'}));
+app.get('../', (req, res) => {
+  res.render('index', {
+    title: 'My Express REST API',
+    description: 'This is a simple REST API created with Express and Pug.',
+  });
+});
+
+app.get('/api/media', (req, res) => {
+  res.status(200).json(mediaItems);
+});
+
+app.get('/api/media/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const media = mediaItems.find((item) => item.media_id === id);
+  if (!media) return res.status(404).json({error: 'Media item not found'});
+  res.status(200).json(media);
+});
+
+app.post('/api/media', express.json(), (req, res) => {
+  const {filename, title, description, user_id, media_type} = req.body;
+
+  if (!filename || !title || !user_id || !media_type) {
+    return res.status(400).json({error: 'Missing required fields'});
   }
+
+  const newMedia = {
+    media_id: mediaItems.length + 1,
+    filename,
+    filesize: Math.floor(Math.random() * 1000000),
+    title,
+    description: description || '',
+    user_id,
+    media_type,
+    created_at: new Date().toISOString(),
+  };
+
+  mediaItems.push(newMedia);
+  res.status(201).json(newMedia);
 });
 
-server.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
+app.put('/api/media/:id', express.json(), (req, res) => {
+  const id = parseInt(req.params.id);
+  const {title, description} = req.body;
+
+  const media = mediaItems.find((item) => item.media_id === id);
+  if (!media) return res.status(404).json({error: 'Media item not found'});
+
+  media.title = title || media.title;
+  media.description = description || media.description;
+
+  res.status(200).json(media);
 });
+
+app.delete('/api/media/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = mediaItems.findIndex((item) => item.media_id === id);
+
+  if (index === -1)
+    return res.status(404).json({error: 'Media item not found'});
+
+  mediaItems.splice(index, 1);
+  res.status(204).send();
+});
+
+app.get('/api/user', (req, res) => res.status(200).json(users));
+
+app.get('/api/user/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const user = users.find((user) => user.user_id === id);
+  if (!user) return res.status(404).json({error: 'User not found'});
+  res.status(200).json(user);
+});
+
+app.post('/api/user', express.json(), (req, res) => {
+  const {username, password, email, user_level_id} = req.body;
+
+  if (!username || !password || !email || !user_level_id) {
+    return res.status(400).json({error: 'Missing required fields'});
+  }
+
+  const newUser = {
+    user_id: users.length + 1,
+    username,
+    password: '********',
+    email,
+    user_level_id,
+    created_at: new Date().toISOString(),
+  };
+
+  users.push(newUser);
+  res.status(201).json(newUser);
+});
+
+app.put('/api/user/:id', express.json(), (req, res) => {
+  const id = parseInt(req.params.id);
+  const {username, email} = req.body;
+
+  const user = users.find((user) => user.user_id === id);
+  if (!user) return res.status(404).json({error: 'User not found'});
+
+  user.username = username || user.username;
+  user.email = email || user.email;
+
+  res.status(200).json(user);
+});
+
+app.delete('/api/user/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = users.findIndex((user) => user.user_id === id);
+
+  if (index === -1) return res.status(404).json({error: 'User not found'});
+
+  users.splice(index, 1);
+  res.status(204).send();
+});
+
+app.listen(port, () =>
+  console.log(`Server running at http://localhost:${port}/`),
+);
