@@ -2,6 +2,8 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require("./db/connectDB");
+const errorHandler = require('./src/middlewares/errorHandler');
+
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const mediaRoutes = require('./routes/mediaRoutes');
@@ -21,6 +23,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/likes', likeRoutes);
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
