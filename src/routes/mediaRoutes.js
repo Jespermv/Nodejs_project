@@ -1,10 +1,10 @@
 const express = require('express');
+const authenticate = require('../middlewares/authenticate');
+const authorize = require('../middlewares/authorize');
 const mediaController = require('../controllers/mediaController');
 
 const router = express.Router();
 
-router.get('/api/media', mediaController.getAllMedia);
-router.get('/api/media/:id', mediaController.getMediaById);
-router.put('/api/media/:id', mediaController.updateMedia);
-router.delete('/api/media/:id', mediaController.deleteMedia);
+router.put('/api/media/:id', authenticate, authorize(['user', 'admin']), mediaController.updateMedia);
+router.delete('/api/media/:id', authenticate, authorize(['user', 'admin']), mediaController.deleteMedia);
 module.exports = router;

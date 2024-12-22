@@ -1,58 +1,24 @@
-const userModel = require('../models/userModel');
+// controllers/userController.js
 const connectDB = require('../db/connectDB');
 
-const getAllUsers = async (req, res) => {
-  try {
-    const users = await userModel.getAllUsers();
-    res.status(200).json(users);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch users' });
-  }
-};
-
-const createUser = async (req, res) => {
-  const { first_name, last_name, email, password } = req.body;
-
-  // Basic validation
-  if (!first_name || !last_name || !email || !password) {
-    return res.status(400).json({ error: 'Please provide all required fields' });
-  }
-
-  try {
-    // Call the model to insert the user into the database
-    const newUser = await userModel.createUser({ first_name, last_name, email, password });
-    res.status(201).json({ message: 'User created successfully', user: newUser });
-  } catch (err) {
-    console.error('Error creating user:', err.message);
-    res.status(500).json({ error: 'Failed to create user' });
-  }
-};
-
-const getUserById = async (req, res) => {
-  const db = await connectDB();
-  const { id } = req.params;
-  try {
-    const [rows] = await db.query('SELECT * FROM users WHERE user_id = ?', [id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to retrieve user' });
-  }
-};
-
 const updateUser = async (req, res) => {
-  const db = await connectDB();
   const { id } = req.params;
-  const { first_name, last_name, email, password } = req.body;
-  console.log(id, first_name, last_name, email, password)
+  const { first_name, last_name, password } = req.body;
+  const { user_id, role } = req.user;
+
+  // Only admins or the owner can update user info
+  if (role !== 'admin' && parseInt(user_id, 10) !== parseInt(id, 10)) {
+    return res.status(403).json({ error: 'Not authorized to update this user' });
+  }
+
   try {
-    console.log("trying...")
-    const [result] = await db.query(`UPDATE users SET first_name = '${first_name}', last_name = '${last_name}', email = '${email}', password = '${password}' WHERE user_id = '${id}'`);
-    console.log(result)
+    const db = await connectDB();
+    const [result] = await db.query(
+      'UPDATE users SET first_name = ?, last_name = ?, password = ? WHERE user_id = ?',
+      [first_name, last_name, password, id]
+    );
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'User not found' });  
+      return res.status(404).json({ error: 'User not found' });
     }
     res.json({ message: 'User updated successfully' });
   } catch (err) {
@@ -61,9 +27,16 @@ const updateUser = async (req, res) => {
 };
 
 const deleteUser = async (req, res) => {
-  const db = await connectDB();
   const { id } = req.params;
+  const { user_id, role } = req.user;
+
+  // Only admins can delete any user, or the owner can delete their own account
+  if (role !== 'admin' && parseInt(user_id, 10) !== parseInt(id, 10)) {
+    return res.status(403).json({ error: 'Not authorized to delete this user' });
+  }
+
   try {
+    const db = await connectDB();
     const [result] = await db.query('DELETE FROM users WHERE user_id = ?', [id]);
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -73,5 +46,5 @@ const deleteUser = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete user' });
   }
 };
-// Other methods: getUserById, createUser, updateUser, deleteUser will be similar
-module.exports = { getAllUsers, createUser, getUserById, updateUser, deleteUser };
+
+module.exports = { updateUser, deleteUser };

@@ -1,4 +1,4 @@
-const connectDB = require('../db/connectDB');
+const connectDB = require('../db/connectDB.js');
 
 const getAllMedia = async () => {
   const db = await connectDB();
@@ -8,3 +8,4 @@ const getAllMedia = async () => {
 
 // Other methods for media operations (getMediaById, updateMedia, etc.)
 module.exports = { getAllMedia };
+ 
